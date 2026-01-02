@@ -110,3 +110,14 @@ NO_DOC_MATCH_MESSAGE = """
 CONVERSATION_LOG_ERROR_MESSAGE = "過去の会話履歴の表示に失敗しました。"
 GET_LLM_RESPONSE_ERROR_MESSAGE = "回答生成に失敗しました。"
 DISP_ANSWER_ERROR_MESSAGE = "回答表示に失敗しました。"
+############################################################
+# RAG設定
+############################################################
+# ベクターストアから取得してプロンプトに埋め込む関連ドキュメント数
+RAG_RETRIEVER_K = 5
+# チャンク分割サイズ
+RAG_CHUNK_SIZE = 500
+# チャンクの重なり（オーバーラップ）
+RAG_CHUNK_OVERLAP = 50
+
+    # Q3

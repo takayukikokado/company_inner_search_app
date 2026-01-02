@@ -118,13 +118,40 @@ def initialize_retriever():
         for key in doc.metadata:
             doc.metadata[key] = adjust_string(doc.metadata[key])
     
-    # 埋め込みモデルの用意
+    
+    # ============================================================
+    # PDFのみ：ページ番号メタデータを補完
+    # PyMuPDFLoader等のローダー構成によっては metadata に page が入らない場合があるため、
+    # 同一PDF内の出現順をページ順として 0 始まりの page を補完する
+    # ============================================================
+    pdf_page_counter = {}
+    for d in docs_all:
+        source = d.metadata.get("source", "")
+        if isinstance(source, str) and source.lower().endswith(".pdf"):
+            # 既に page があればそのまま
+            if "page" in d.metadata and d.metadata["page"] is not None:
+                continue
+            # 代替キーがある場合はそれを採用
+            for alt_key in ("page_number", "page_index"):
+                if alt_key in d.metadata and d.metadata[alt_key] is not None:
+                    try:
+                        d.metadata["page"] = int(d.metadata[alt_key])
+                        break
+                    except Exception:
+                        pass
+            # それでも無ければ、同一PDF内の出現順で採番
+            if "page" not in d.metadata or d.metadata["page"] is None:
+                idx = pdf_page_counter.get(source, 0)
+                d.metadata["page"] = idx
+                pdf_page_counter[source] = idx + 1
+
+# 埋め込みモデルの用意
     embeddings = OpenAIEmbeddings()
     
     # チャンク分割用のオブジェクトを作成
     text_splitter = CharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=ct.RAG_CHUNK_SIZE,
+        chunk_overlap=ct.RAG_CHUNK_OVERLAP,
         separator="\n"
     )
 
@@ -135,7 +162,7 @@ def initialize_retriever():
     db = Chroma.from_documents(splitted_docs, embedding=embeddings)
 
     # ベクターストアを検索するRetrieverの作成
-    st.session_state.retriever = db.as_retriever(search_kwargs={"k": 3})
+    st.session_state.retriever = db.as_retriever(search_kwargs={"k": ct.RAG_RETRIEVER_K})
 
 
 def initialize_session_state():
@@ -242,3 +269,5 @@ def adjust_string(s):
     
     # OSがWindows以外の場合はそのまま返す
     return s
+
+    # Q3
