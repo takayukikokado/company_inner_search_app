@@ -132,13 +132,24 @@ def initialize_retriever():
             if "page" in d.metadata and d.metadata["page"] is not None:
                 continue
             # 代替キーがある場合はそれを採用
-            for alt_key in ("page_number", "page_index"):
+            for alt_key in ("page_number", "page_index", "pageNumber"):
                 if alt_key in d.metadata and d.metadata[alt_key] is not None:
                     try:
                         d.metadata["page"] = int(d.metadata[alt_key])
                         break
                     except Exception:
                         pass
+            # loc にページ情報が入るローダーにも対応
+            if ("page" not in d.metadata or d.metadata["page"] is None) and isinstance(d.metadata.get("loc"), dict):
+                loc = d.metadata.get("loc")
+                for loc_key in ("pageNumber", "page", "page_number", "page_index"):
+                    if loc_key in loc and loc[loc_key] is not None:
+                        try:
+                            d.metadata["page"] = int(loc[loc_key])
+                            break
+                        except Exception:
+                            pass
+
             # それでも無ければ、同一PDF内の出現順で採番
             if "page" not in d.metadata or d.metadata["page"] is None:
                 idx = pdf_page_counter.get(source, 0)
@@ -270,4 +281,4 @@ def adjust_string(s):
     # OSがWindows以外の場合はそのまま返す
     return s
 
-    # Q3
+# Q5

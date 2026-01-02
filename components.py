@@ -17,6 +17,35 @@ def _is_pdf(path: str) -> bool:
     return isinstance(path, str) and path.lower().endswith(".pdf")
 
 
+def _extract_page(metadata: dict) -> int | None:
+    """
+    Document.metadata からページ番号（0始まり想定）を取得
+    - page / page_number / page_index / pageNumber / loc.pageNumber などに対応
+    """
+    if not isinstance(metadata, dict):
+        return None
+
+    # 直接キーに存在する場合
+    for key in ("page", "page_number", "page_index", "pageNumber"):
+        if key in metadata and metadata[key] is not None:
+            try:
+                return int(metadata[key])
+            except Exception:
+                pass
+
+    # ネストされたlocに存在する場合
+    loc = metadata.get("loc")
+    if isinstance(loc, dict):
+        for key in ("pageNumber", "page", "page_number", "page_index"):
+            if key in loc and loc[key] is not None:
+                try:
+                    return int(loc[key])
+                except Exception:
+                    pass
+
+    return None
+
+
 def _format_source(path: str, page: int | None = None) -> str:
     # PDFのみページ番号を付与（pageは0始まり想定 → 表示は1始まり）
     if _is_pdf(path) and page is not None:
@@ -168,7 +197,7 @@ def display_search_llm_response(llm_response):
         
         # 参照元のありかに応じて、適したアイコンを取得
         icon = utils.get_source_icon(main_file_path)
-        main_page_number = llm_response["context"][0].metadata.get("page")
+        main_page_number = _extract_page(llm_response["context"][0].metadata)
         st.success(_format_source(main_file_path, main_page_number), icon=icon)
 
         # ==========================================
@@ -197,9 +226,8 @@ def display_search_llm_response(llm_response):
             duplicate_check_list.append(sub_file_path)
             
             # ページ番号が取得できない場合のための分岐処理
-            if "page" in document.metadata:
-                # ページ番号を取得
-                sub_page_number = document.metadata["page"]
+            sub_page_number = _extract_page(document.metadata)
+            if sub_page_number is not None:
                 # 「サブドキュメントのファイルパス」と「ページ番号」の辞書を作成
                 sub_choice = {"source": sub_file_path, "page_number": sub_page_number}
             else:
@@ -290,7 +318,7 @@ def display_contact_llm_response(llm_response):
                 continue
 
             if _is_pdf(file_path):
-                page = document.metadata.get("page")
+                page = _extract_page(document.metadata)
                 if page is not None:
                     pdf_pages_map.setdefault(file_path, set()).add(page)
                 else:
@@ -337,4 +365,4 @@ def display_contact_llm_response(llm_response):
 
     return content
 
-    # Q3
+    # Q5
